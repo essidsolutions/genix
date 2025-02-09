@@ -1,0 +1,2 @@
+# genix
+ai code assistant
