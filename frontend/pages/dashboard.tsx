@@ -1,61 +1,66 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import styles from "../styles/Dashboard.module.css";
 
-interface CloudCostData {
-  total_cost: number;
-  services: Record<string, number>;
-}
-
 export default function Dashboard() {
-  const [costData, setCostData] = useState<[string, CloudCostData][]>([]);
-  const [selectedProvider, setSelectedProvider] = useState("");
+  const [provider, setProvider] = useState("AWS");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetch(`http://localhost:8000/cloud-cost${selectedProvider ? `?provider=${selectedProvider}` : ""}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (typeof data === "object" && data !== null) {
-          setCostData(Object.entries(data) as [string, CloudCostData][]);
-        } else {
-          setCostData([]); // Ensure it doesn't crash if data is unexpected
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching cloud cost:", error);
-        setCostData([]);
-      });
-  }, [selectedProvider]);
+  const handleOAuthConnect = async () => {
+    const response = await fetch("http://localhost:8000/oauth/connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider,
+        client_id: clientId,
+        client_secret: clientSecret,
+        auth_token: authToken,
+      }),
+    });
+
+    const data = await response.json();
+    setMessage(data.message || "Failed to connect");
+  };
 
   return (
     <div className={styles.container}>
       <h1>Cloud Cost Dashboard</h1>
-      <select className={styles.selectDropdown} onChange={(e) => setSelectedProvider(e.target.value)}>
-        <option value="">All Providers</option>
+      <p>Connect your cloud provider to fetch real-time cost data.</p>
+
+      <select className={styles.selectDropdown} value={provider} onChange={(e) => setProvider(e.target.value)}>
         <option value="AWS">AWS</option>
         <option value="Azure">Azure</option>
         <option value="GCP">GCP</option>
       </select>
-      <div className={styles.costGrid}>
-        {costData.length > 0 ? (
-          costData.map(([provider, details]) => (
-            <div key={provider} className={styles.card}>
-              <h2>{provider}</h2>
-              <p><strong>Total Cost:</strong> ${details?.total_cost ? details.total_cost.toFixed(2) : "N/A"}</p>
-              <ul>
-                {details?.services
-                  ? Object.entries(details.services).map(([service, cost]) => (
-                      <li key={service}>
-                        {service}: ${cost ? cost.toFixed(2) : "N/A"}
-                      </li>
-                    ))
-                  : <li>No service data available</li>}
-              </ul>
-            </div>
-          ))
-        ) : (
-          <p>No data available. Please select a provider or try again later.</p>
-        )}
-      </div>
+
+      <input
+        className={styles.inputField}
+        type="text"
+        placeholder="Client ID"
+        value={clientId}
+        onChange={(e) => setClientId(e.target.value)}
+      />
+      
+      <input
+        className={styles.inputField}
+        type="password"
+        placeholder="Client Secret"
+        value={clientSecret}
+        onChange={(e) => setClientSecret(e.target.value)}
+      />
+
+      <input
+        className={styles.inputField}
+        type="text"
+        placeholder="OAuth Token"
+        value={authToken}
+        onChange={(e) => setAuthToken(e.target.value)}
+      />
+
+      <button className={styles.connectButton} onClick={handleOAuthConnect}>Connect</button>
+      {message && <p>{message}</p>}
     </div>
   );
 }
